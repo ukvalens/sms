@@ -12,6 +12,20 @@ class Auth {
     }
     
     public function register($username, $email, $password, $role) {
+        // Check if username already exists
+        $this->db->query('SELECT id FROM users WHERE username = :username');
+        $this->db->bind(':username', $username);
+        if($this->db->single()) {
+            return false; // Username already exists
+        }
+        
+        // Check if email already exists
+        $this->db->query('SELECT id FROM users WHERE email = :email');
+        $this->db->bind(':email', $email);
+        if($this->db->single()) {
+            return false; // Email already exists
+        }
+        
         $this->db->query('INSERT INTO users (username, email, password, role) VALUES (:username, :email, :password, :role)');
         $this->db->bind(':username', $username);
         $this->db->bind(':email', $email);
