@@ -105,9 +105,49 @@ function closeModal() {
 }
 
 function viewMessage(id) {
-    alert("Message view will be implemented for ID: " + id);
+    alert("Loading message " + id);
+}
+
+function closeMessageModal() {
+    document.getElementById("messageModal").style.display = "none";
 }
 </script>';
 
 echo renderStudentLayout('Messages', $content);
 ?>
+
+<!-- Message View Modal -->
+<div id="messageModal" class="modal" style="display:none;">
+    <div class="modal-content">
+        <span class="close" onclick="closeMessageModal()">&times;</span>
+        <div id="messageContent">
+            <!-- Message content will be loaded here -->
+        </div>
+    </div>
+</div>
+
+<script>
+function viewMessage(id) {
+    fetch('view_message.php?id=' + id)
+        .then(response => response.json())
+        .then(data => {
+            if(data.success) {
+                var content = '<h3>' + data.message.subject + '</h3>' +
+                    '<div style="margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px solid #E6F2F1;">' +
+                        '<strong>From:</strong> ' + data.message.sender_name + '<br>' +
+                        '<strong>Date:</strong> ' + data.message.sent_at +
+                    '</div>' +
+                    '<div style="line-height: 1.6;">' +
+                        data.message.message.replace(/\n/g, '<br>') +
+                    '</div>';
+                document.getElementById('messageContent').innerHTML = content;
+                document.getElementById('messageModal').style.display = 'block';
+            } else {
+                alert('Error loading message');
+            }
+        })
+        .catch(error => {
+            alert('Error loading message');
+        });
+}
+</script>
