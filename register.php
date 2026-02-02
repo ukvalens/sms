@@ -14,7 +14,7 @@ if($_POST) {
     if($auth->register($username, $email, $password, $role)) {
         $message = 'Registration successful! You can now login.';
     } else {
-        $error = 'Registration failed. Email may already exist.';
+        $error = 'Registration failed. Username or email already exists.';
     }
 }
 ?>

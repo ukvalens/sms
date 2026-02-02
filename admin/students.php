@@ -99,8 +99,12 @@ if(isset($_GET['edit'])) {
 }
 
 // Get all students
-$db->query("SELECT s.*, u.username, u.email, c.name as class_name, sec.name as section_name FROM students s JOIN users u ON s.user_id = u.id JOIN classes c ON s.class_id = c.id JOIN sections sec ON s.section_id = sec.id ORDER BY s.roll_number");
+$db->query("SELECT s.*, u.username, u.email, c.name as class_name, sec.name as section_name FROM students s JOIN users u ON s.user_id = u.id LEFT JOIN classes c ON s.class_id = c.id LEFT JOIN sections sec ON s.section_id = sec.id ORDER BY s.roll_number");
 $students = $db->resultset();
+
+if(!$students) {
+    $students = [];
+}
 
 // Get classes and sections
 $db->query("SELECT * FROM classes ORDER BY name");
@@ -210,8 +214,8 @@ echo renderAdminLayout('Manage Students', '
                     <td>' . $student['roll_number'] . '</td>
                     <td>' . $student['username'] . '</td>
                     <td>' . $student['email'] . '</td>
-                    <td>' . $student['class_name'] . '</td>
-                    <td>' . $student['section_name'] . '</td>
+                    <td>' . ($student['class_name'] ?? 'Not assigned') . '</td>
+                    <td>' . ($student['section_name'] ?? 'Not assigned') . '</td>
                     <td>' . $student['admission_date'] . '</td>
                     <td>
                         <button class="btn-small btn-edit" onclick="editStudent(' . $student['id'] . ')">Edit</button>

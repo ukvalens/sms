@@ -262,9 +262,62 @@ function enterMarks(examId) {
 }
 
 function viewExam(examId) {
-    alert("Exam details view will be implemented");
+    alert("Loading exam details...");
 }
 </script>';
 
 echo renderTeacherLayout('Exam Management', $content);
 ?>
+
+<!-- Exam Details Modal -->
+<div id="examModal" class="modal" style="display:none;">
+    <div class="modal-content" style="max-width: 600px;">
+        <span class="close" onclick="closeExamModal()">&times;</span>
+        <div id="examContent">
+            <!-- Exam details will be loaded here -->
+        </div>
+    </div>
+</div>
+
+<script>
+function viewExam(examId) {
+    fetch('view_exam.php?id=' + examId)
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+            return response.json();
+        })
+        .then(data => {
+            console.log('Response:', data);
+            if(data.success) {
+                var content = '<h3>' + data.exam.name + '</h3>' +
+                    '<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">' +
+                        '<div><strong>Type:</strong> ' + data.exam.type.charAt(0).toUpperCase() + data.exam.type.slice(1) + '</div>' +
+                        '<div><strong>Class:</strong> ' + data.exam.class_name + '</div>' +
+                        '<div><strong>Subject:</strong> ' + data.exam.subject_name + '</div>' +
+                        '<div><strong>Date:</strong> ' + data.exam.exam_date + '</div>' +
+                        '<div><strong>Max Marks:</strong> ' + data.exam.max_marks + '</div>' +
+                        '<div><strong>Pass Marks:</strong> ' + data.exam.pass_marks + '</div>' +
+                    '</div>' +
+                    '<div style="margin-top: 20px;">' +
+                        '<strong>Questions:</strong> ' + data.exam.question_count + ' questions<br>' +
+                        '<strong>Students Enrolled:</strong> ' + data.exam.student_count + ' students<br>' +
+                        '<strong>Status:</strong> ' + (data.exam.is_expired ? '<span style="color: #E63946;">Expired</span>' : '<span style="color: #0077B6;">Active</span>') +
+                    '</div>';
+                document.getElementById('examContent').innerHTML = content;
+                document.getElementById('examModal').style.display = 'block';
+            } else {
+                alert('Error: ' + (data.error || 'Unknown error'));
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error loading exam details: ' + error.message);
+        });
+}
+
+function closeExamModal() {
+    document.getElementById('examModal').style.display = 'none';
+}
+</script>
