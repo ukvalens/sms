@@ -11,6 +11,22 @@ if($_POST) {
     if(isset($_POST['action'])) {
         switch($_POST['action']) {
             case 'add':
+                // Check if username already exists
+                $db->query("SELECT id FROM users WHERE username = :username");
+                $db->bind(':username', $_POST['username']);
+                if($db->single()) {
+                    header('Location: students.php?msg=Username already exists.');
+                    exit;
+                }
+                
+                // Check if email already exists
+                $db->query("SELECT id FROM users WHERE email = :email");
+                $db->bind(':email', $_POST['email']);
+                if($db->single()) {
+                    header('Location: students.php?msg=Email already exists.');
+                    exit;
+                }
+                
                 $db->query("INSERT INTO users (username, email, password, role) VALUES (:username, :email, :password, 'student')");
                 $db->bind(':username', $_POST['username']);
                 $db->bind(':email', $_POST['email']);

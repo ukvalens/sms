@@ -80,7 +80,7 @@ $stats = getStats($db, $role);
 <html>
 <head>
     <title>Dashboard - School Management System</title>
-    <link rel="stylesheet" href="assets/css/style.css?v=<?php echo time(); ?>">
+    <link rel="stylesheet" href="/sms/assets/css/style.css?v=<?php echo time(); ?>">
 </head>
 <body>
     <div class="dashboard-layout">
