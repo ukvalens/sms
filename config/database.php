@@ -1,9 +1,20 @@
 <?php
-// Database Configuration
-define('DB_HOST', 'localhost');
-define('DB_USER', 'root');
-define('DB_PASS', '');
-define('DB_NAME', 'school_management');
+// Environment Detection
+$isLocal = ($_SERVER['HTTP_HOST'] === 'localhost' || strpos($_SERVER['HTTP_HOST'], '127.0.0.1') !== false);
+
+if ($isLocal) {
+    // Local Database Configuration
+    define('DB_HOST', 'localhost');
+    define('DB_USER', 'root');
+    define('DB_PASS', '');
+    define('DB_NAME', 'school_management');
+} else {
+    // Hosted Database Configuration
+    define('DB_HOST', 'sql302.infinityfree.com');
+    define('DB_USER', 'if0_41061043');
+    define('DB_PASS', 'TaSKCVjHgK');
+    define('DB_NAME', 'if0_41061043_school_management');
+}
 
 // Database Connection Class
 class Database {
