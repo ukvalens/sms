@@ -14,7 +14,7 @@ function renderStudentLayout($title, $content) {
     <html>
     <head>
         <title><?php echo $title; ?> - Student Panel</title>
-        <link rel="stylesheet" href="<?php echo (strpos($_SERVER['PHP_SELF'], '/student/') !== false) ? '../assets/css/style.css' : 'assets/css/style.css'; ?>?v=<?php echo time(); ?>">
+        <link rel="stylesheet" href="/sms/assets/css/style.css?v=<?php echo time(); ?>">
     </head>
     <body>
         <div class="dashboard-layout">
