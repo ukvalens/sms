@@ -37,11 +37,16 @@ if($_POST && isset($_POST['action']) && $_POST['action'] == 'create') {
         $db->bind(':created_by', $teacherId);
         
         if($db->execute()) {
-            $message = 'Exam/Assignment scheduled successfully!';
+            header('Location: exams.php?created=1');
+            exit;
         } else {
             $error = 'Failed to schedule exam/assignment.';
         }
     }
+}
+
+if(isset($_GET['created'])) {
+    $message = 'Exam/Assignment scheduled successfully!';
 }
 
 if($_POST && isset($_POST['action']) && $_POST['action'] == 'reschedule') {

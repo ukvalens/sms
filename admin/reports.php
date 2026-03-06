@@ -24,6 +24,12 @@ if(isset($_GET['generate'])) {
         case 'system-stats':
             generateSystemStatsReport($db);
             break;
+        case 'backup-status':
+            generateBackupStatusReport($db);
+            break;
+        case 'user-activity':
+            generateUserActivityReport($db);
+            break;
     }
     exit;
 }
@@ -129,6 +135,80 @@ function generateFeeCollectionReport($db) {
     fclose($output);
 }
 
+function generateUserActivityReport($db) {
+    header('Content-Type: text/csv');
+    header('Content-Disposition: attachment; filename="user_activity_' . date('Y-m-d') . '.csv"');
+    
+    $output = fopen('php://output', 'w');
+    fputcsv($output, ['Username', 'Role', 'Email', 'Status', 'Account Created', 'Last Updated']);
+    
+    $db->query("
+        SELECT username, role, email, status, created_at, updated_at
+        FROM users
+        ORDER BY updated_at DESC
+    ");
+    $users = $db->resultset();
+    
+    foreach($users as $user) {
+        fputcsv($output, [
+            $user['username'],
+            ucfirst($user['role']),
+            $user['email'],
+            ucfirst($user['status']),
+            $user['created_at'],
+            $user['updated_at']
+        ]);
+    }
+    fclose($output);
+}
+
+function generateBackupStatusReport($db) {
+    header('Content-Type: text/html');
+    
+    $backupDir = '../backups/';
+    $dbBackups = [];
+    
+    if(is_dir($backupDir)) {
+        $files = scandir($backupDir);
+        foreach($files as $file) {
+            if($file != '.' && $file != '..' && pathinfo($file, PATHINFO_EXTENSION) == 'sql') {
+                $dbBackups[] = [
+                    'name' => $file,
+                    'size' => filesize($backupDir . $file),
+                    'date' => date('Y-m-d H:i:s', filemtime($backupDir . $file))
+                ];
+            }
+        }
+    }
+    
+    echo '<!DOCTYPE html><html><head><title>Backup Status Report</title><style>
+        body { font-family: Arial; padding: 20px; }
+        table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+        th, td { border: 1px solid #ddd; padding: 12px; text-align: left; }
+        th { background: #0077B6; color: white; }
+        .status { padding: 5px 10px; border-radius: 4px; }
+        .success { background: #E8F5F3; color: #2A9D8F; }
+        .warning { background: #FFF3CD; color: #856404; }
+    </style></head><body>';
+    
+    echo '<h1>Database Backup Status Report</h1>';
+    echo '<p>Generated on: ' . date('Y-m-d H:i:s') . '</p>';
+    
+    if(empty($dbBackups)) {
+        echo '<p class="status warning">No backups found. Please create a backup.</p>';
+    } else {
+        echo '<p class="status success">Total Backups: ' . count($dbBackups) . '</p>';
+        echo '<table><thead><tr><th>Backup File</th><th>Size</th><th>Created Date</th></tr></thead><tbody>';
+        foreach($dbBackups as $backup) {
+            echo '<tr><td>' . $backup['name'] . '</td><td>' . round($backup['size']/1024, 2) . ' KB</td><td>' . $backup['date'] . '</td></tr>';
+        }
+        echo '</tbody></table>';
+    }
+    
+    echo '<button onclick="window.print()" style="padding: 10px 20px; background: #0077B6; color: white; border: none; border-radius: 6px; cursor: pointer;">Print Report</button>';
+    echo '</body></html>';
+}
+
 function generateSystemStatsReport($db) {
     header('Content-Type: application/json');
     header('Content-Disposition: attachment; filename="system_stats_' . date('Y-m-d') . '.json"');
@@ -193,8 +273,8 @@ $content = '
         <h3>System Reports</h3>
         <ul>
             <li><a href="?generate=system-stats">System Statistics (JSON)</a></li>
-            <li><a href="#" onclick="generateReport(\'user-activity\')">User Activity Log (Coming Soon)</a></li>
-            <li><a href="#" onclick="generateReport(\'backup-status\')">Backup Status (Coming Soon)</a></li>
+            <li><a href="?generate=user-activity">User Activity Log (CSV)</a></li>
+            <li><a href="?generate=backup-status" target="_blank">Backup Status Report</a></li>
         </ul>
     </div>
 </div>
