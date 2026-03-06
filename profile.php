@@ -20,7 +20,6 @@ if($_POST) {
         switch($_POST['action']) {
             case 'update_profile':
                 // Handle image upload
-                $photoPath = null;
                 if(isset($_FILES['photo']) && $_FILES['photo']['error'] === 0) {
                     $uploadDir = 'uploads/profiles/';
                     if(!is_dir($uploadDir)) {
@@ -35,19 +34,26 @@ if($_POST) {
                         $photoPath = $uploadDir . $fileName;
                         
                         if(move_uploaded_file($_FILES['photo']['tmp_name'], $photoPath)) {
-                            // Update photo in role-specific table
+                            // Update photo based on role
                             switch($userRole) {
+                                case 'admin':
+                                    $db->query("UPDATE users SET photo = :photo WHERE id = :user_id");
+                                    $db->bind(':photo', $photoPath);
+                                    $db->bind(':user_id', $userId);
+                                    $db->execute();
+                                    break;
                                 case 'teacher':
                                     $db->query("UPDATE teachers SET photo = :photo WHERE user_id = :user_id");
+                                    $db->bind(':photo', $photoPath);
+                                    $db->bind(':user_id', $userId);
+                                    $db->execute();
                                     break;
                                 case 'student':
                                     $db->query("UPDATE students SET photo = :photo WHERE user_id = :user_id");
+                                    $db->bind(':photo', $photoPath);
+                                    $db->bind(':user_id', $userId);
+                                    $db->execute();
                                     break;
-                            }
-                            if($userRole !== 'admin') {
-                                $db->bind(':photo', $photoPath);
-                                $db->bind(':user_id', $userId);
-                                $db->execute();
                             }
                         }
                     }

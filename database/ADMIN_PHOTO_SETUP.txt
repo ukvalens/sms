@@ -1,0 +1,17 @@
+INSTRUCTIONS TO ENABLE ADMIN PROFILE IMAGES
+============================================
+
+Run this SQL command in phpMyAdmin or MySQL:
+
+1. Open phpMyAdmin (http://localhost/phpmyadmin)
+2. Select the 'school_management' database
+3. Go to SQL tab
+4. Run the following command:
+
+ALTER TABLE users ADD COLUMN photo VARCHAR(255) AFTER status;
+
+OR
+
+Import the file: database/add_admin_photo.sql
+
+This will add a photo column to the users table, allowing admin users to upload profile images.

@@ -3,6 +3,26 @@ require_once 'layout.php';
 require_once '../config/database.php';
 
 $db = new Database();
+$message = '';
+
+// Handle form submissions
+if ($_POST) {
+    if (isset($_POST['add_fee'])) {
+        $db->query("INSERT INTO fee_terms (name, type, class_id, amount, due_date) VALUES (?, ?, ?, ?, ?)");
+        $db->bind(1, $_POST['name']);
+        $db->bind(2, $_POST['type']);
+        $db->bind(3, $_POST['class_id']);
+        $db->bind(4, $_POST['amount']);
+        $db->bind(5, $_POST['due_date']);
+        if ($db->execute()) {
+            $message = '<div class="alert alert-success">Fee term added successfully!</div>';
+        }
+    }
+}
+
+// Get classes for dropdown
+$db->query("SELECT * FROM classes ORDER BY name");
+$classes = $db->resultset();
 
 // Get fee terms with class info
 $db->query("
@@ -13,25 +33,54 @@ $db->query("
 ");
 $feeTerms = $db->resultset();
 
-if(empty($feeTerms)) {
-    $content = '
-    <div class="page-header">
-        <h2>Fee Management</h2>
-        <button class="btn" onclick="showAddForm()">Add Fee Term</button>
-    </div>
-    
-    <div class="alert alert-info">
-        <p>No fee terms found. Create fee structures using the form above.</p>
-    </div>';
-    
-    echo renderAdminLayout('Fee Management', $content);
-    return;
-}
-
-$content = '
+$content = $message . '
 <div class="page-header">
     <h2>Fee Management</h2>
     <button class="btn" onclick="showAddForm()">Add Fee Term</button>
+</div>
+
+<div id="addFeeModal" class="modal" style="display:none;">
+    <div class="modal-content">
+        <span class="close" onclick="closeModal()">&times;</span>
+        <h3>Add Fee Term</h3>
+        <form method="POST">
+            <div class="form-group">
+                <label>Fee Name:</label>
+                <input type="text" name="name" required>
+            </div>
+            <div class="form-group">
+                <label>Type:</label>
+                <select name="type" required>
+                    <option value="tuition">Tuition</option>
+                    <option value="exam">Exam</option>
+                    <option value="library">Library</option>
+                    <option value="transport">Transport</option>
+                    <option value="other">Other</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Class:</label>
+                <select name="class_id" required>
+                    <option value="">Select Class</option>';
+
+foreach($classes as $class) {
+    $content .= '<option value="' . $class['id'] . '">' . $class['name'] . '</option>';
+}
+
+$content .= '
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Amount:</label>
+                <input type="number" name="amount" step="0.01" required>
+            </div>
+            <div class="form-group">
+                <label>Due Date:</label>
+                <input type="date" name="due_date" required>
+            </div>
+            <button type="submit" name="add_fee" class="btn">Add Fee Term</button>
+        </form>
+    </div>
 </div>
 
 <div class="data-table">
@@ -48,20 +97,22 @@ $content = '
         </thead>
         <tbody>';
 
-foreach($feeTerms as $fee) {
-    $content .= '
+if(empty($feeTerms)) {
+    $content .= '<tr><td colspan="6" style="text-align:center;">No fee terms found</td></tr>';
+} else {
+    foreach($feeTerms as $fee) {
+        $content .= '
             <tr>
-                <td>' . $fee['name'] . '</td>
+                <td>' . htmlspecialchars($fee['name']) . '</td>
                 <td>' . ucfirst($fee['type']) . '</td>
-                <td>' . $fee['class_name'] . '</td>
+                <td>' . htmlspecialchars($fee['class_name']) . '</td>
                 <td>₹' . number_format($fee['amount'], 2) . '</td>
-                <td>' . $fee['due_date'] . '</td>
+                <td>' . date('M d, Y', strtotime($fee['due_date'])) . '</td>
                 <td>
-                    <button class="btn-small btn-edit">Edit</button>
                     <button class="btn-small btn-view" onclick="viewPayments(' . $fee['id'] . ')">View Payments</button>
-                    <button class="btn-small btn-delete">Delete</button>
                 </td>
             </tr>';
+    }
 }
 
 $content .= '
@@ -71,11 +122,22 @@ $content .= '
 
 <script>
 function showAddForm() {
-    alert("Add Fee Term form will be implemented");
+    document.getElementById("addFeeModal").style.display = "block";
+}
+
+function closeModal() {
+    document.getElementById("addFeeModal").style.display = "none";
 }
 
 function viewPayments(feeId) {
-    alert("View payments for fee ID: " + feeId);
+    window.location.href = "fee_payments.php?fee_id=" + feeId;
+}
+
+window.onclick = function(event) {
+    var modal = document.getElementById("addFeeModal");
+    if (event.target == modal) {
+        modal.style.display = "none";
+    }
 }
 </script>';
 
