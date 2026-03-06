@@ -5,6 +5,17 @@ require_once '../config/database.php';
 $db = new Database();
 $message = '';
 
+// Handle delete
+if($_POST && isset($_POST['delete_material'])) {
+    $db->query("DELETE FROM study_materials WHERE id = :id AND uploaded_by = :user_id");
+    $db->bind(':id', $_POST['material_id']);
+    $db->bind(':user_id', $_SESSION['user_id']);
+    if($db->execute()) {
+        header('Location: materials.php?deleted=1');
+        exit;
+    }
+}
+
 // Handle file upload
 if($_POST && isset($_POST['action']) && $_POST['action'] == 'upload') {
     $uploadDir = '../uploads/materials/';
@@ -24,9 +35,17 @@ if($_POST && isset($_POST['action']) && $_POST['action'] == 'upload') {
         $db->bind(':uploaded_by', $_SESSION['user_id']);
         
         if($db->execute()) {
-            $message = 'Study material uploaded successfully!';
+            header('Location: materials.php?uploaded=1');
+            exit;
         }
     }
+}
+
+// Display messages from redirects
+if(isset($_GET['uploaded'])) {
+    $message = 'Study material uploaded successfully!';
+} elseif(isset($_GET['deleted'])) {
+    $message = 'Material deleted successfully!';
 }
 
 // Get teacher's materials
@@ -145,7 +164,11 @@ function downloadFile(path) {
 
 function deleteMaterial(id) {
     if(confirm("Are you sure you want to delete this material?")) {
-        alert("Delete functionality will be implemented");
+        const form = document.createElement("form");
+        form.method = "POST";
+        form.innerHTML = `<input name="delete_material" value="1"><input name="material_id" value="${id}">`;
+        document.body.appendChild(form);
+        form.submit();
     }
 }
 </script>';
