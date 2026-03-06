@@ -36,6 +36,9 @@ if(isset($_GET['generate'])) {
         case 'subject-wise':
             generateSubjectWiseReport($db);
             break;
+        case 'exam-results':
+            generateExamResultsReport($db);
+            break;
     }
     exit;
 }
@@ -137,6 +140,42 @@ function generateFeeCollectionReport($db) {
     
     foreach($data as $row) {
         fputcsv($output, [$row['fee_name'], $row['class_name'], $row['total_amount'], $row['collected_amount'], $row['outstanding']]);
+    }
+    fclose($output);
+}
+
+function generateExamResultsReport($db) {
+    header('Content-Type: text/csv');
+    header('Content-Disposition: attachment; filename="exam_results_' . date('Y-m-d') . '.csv"');
+    
+    $output = fopen('php://output', 'w');
+    fputcsv($output, ['Exam Name', 'Student Name', 'Roll Number', 'Class', 'Subject', 'Marks Obtained', 'Max Marks', 'Status', 'Exam Date']);
+    
+    $db->query("
+        SELECT e.name as exam_name, u.username, s.roll_number, c.name as class_name, 
+               sub.name as subject_name, er.marks_obtained, e.max_marks, er.status, e.exam_date
+        FROM exam_results er
+        JOIN exams e ON er.exam_id = e.id
+        JOIN students s ON er.student_id = s.id
+        JOIN users u ON s.user_id = u.id
+        JOIN classes c ON e.class_id = c.id
+        JOIN subjects sub ON e.subject_id = sub.id
+        ORDER BY e.exam_date DESC, s.roll_number
+    ");
+    $results = $db->resultset();
+    
+    foreach($results as $result) {
+        fputcsv($output, [
+            $result['exam_name'],
+            $result['username'],
+            $result['roll_number'],
+            $result['class_name'],
+            $result['subject_name'],
+            $result['marks_obtained'],
+            $result['max_marks'],
+            ucfirst($result['status']),
+            date('Y-m-d', strtotime($result['exam_date']))
+        ]);
     }
     fclose($output);
 }
@@ -334,7 +373,7 @@ $content = '
     <div class="report-card">
         <h3>Academic Reports</h3>
         <ul>
-            <li><a href="#" onclick="generateReport(\'exam-results\')">Exam Results (Coming Soon)</a></li>
+            <li><a href="?generate=exam-results">Exam Results Report (CSV)</a></li>
             <li><a href="?generate=subject-wise">Subject-wise Performance (CSV)</a></li>
             <li><a href="?generate=teacher-load">Teacher Workload Report (CSV)</a></li>
         </ul>
