@@ -39,6 +39,9 @@ if(isset($_GET['generate'])) {
         case 'exam-results':
             generateExamResultsReport($db);
             break;
+        case 'outstanding':
+            generateOutstandingFeesReport($db);
+            break;
     }
     exit;
 }
@@ -140,6 +143,45 @@ function generateFeeCollectionReport($db) {
     
     foreach($data as $row) {
         fputcsv($output, [$row['fee_name'], $row['class_name'], $row['total_amount'], $row['collected_amount'], $row['outstanding']]);
+    }
+    fclose($output);
+}
+
+function generateOutstandingFeesReport($db) {
+    header('Content-Type: text/csv');
+    header('Content-Disposition: attachment; filename="outstanding_fees_' . date('Y-m-d') . '.csv"');
+    
+    $output = fopen('php://output', 'w');
+    fputcsv($output, ['Student Name', 'Roll Number', 'Class', 'Fee Term', 'Total Amount', 'Paid Amount', 'Outstanding', 'Due Date']);
+    
+    $db->query("
+        SELECT u.username, s.roll_number, c.name as class_name, ft.name as fee_name,
+               ft.amount as total_amount,
+               COALESCE(SUM(fp.amount_paid), 0) as paid_amount,
+               (ft.amount - COALESCE(SUM(fp.amount_paid), 0)) as outstanding,
+               ft.due_date
+        FROM students s
+        JOIN users u ON s.user_id = u.id
+        JOIN classes c ON s.class_id = c.id
+        CROSS JOIN fee_terms ft ON ft.class_id = s.class_id
+        LEFT JOIN fee_payments fp ON ft.id = fp.fee_term_id AND s.id = fp.student_id
+        GROUP BY s.id, ft.id
+        HAVING outstanding > 0
+        ORDER BY ft.due_date, s.roll_number
+    ");
+    $outstanding = $db->resultset();
+    
+    foreach($outstanding as $row) {
+        fputcsv($output, [
+            $row['username'],
+            $row['roll_number'],
+            $row['class_name'],
+            $row['fee_name'],
+            $row['total_amount'],
+            $row['paid_amount'],
+            $row['outstanding'],
+            date('Y-m-d', strtotime($row['due_date']))
+        ]);
     }
     fclose($output);
 }
@@ -383,7 +425,7 @@ $content = '
         <h3>Financial Reports</h3>
         <ul>
             <li><a href="?generate=fee-collection">Fee Collection Report (CSV)</a></li>
-            <li><a href="#" onclick="generateReport(\'outstanding\')">Outstanding Fees (Coming Soon)</a></li>
+            <li><a href="?generate=outstanding">Outstanding Fees Report (CSV)</a></li>
             <li><a href="#" onclick="generateReport(\'monthly-income\')">Monthly Income (Coming Soon)</a></li>
         </ul>
     </div>
