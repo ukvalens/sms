@@ -21,6 +21,7 @@ function renderStudentLayout($title, $content) {
     <head>
         <title><?php echo $title; ?> - Student Panel</title>
         <link rel="stylesheet" href="/sms/assets/css/style.css?v=<?php echo time(); ?>">
+        <script src="/sms/assets/js/pagination.js"></script>
     </head>
     <body>
         <div class="dashboard-layout">

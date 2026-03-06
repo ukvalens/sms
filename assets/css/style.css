@@ -317,14 +317,16 @@ body {
 .data-table th {
     background: #0077B6;
     color: white;
-    padding: 15px;
+    padding: 8px 12px;
     text-align: left;
     font-weight: 600;
+    font-size: 13px;
 }
 
 .data-table td {
-    padding: 12px 15px;
+    padding: 6px 12px;
     border-bottom: 1px solid #E6F2F1;
+    font-size: 13px;
 }
 
 .data-table tr:hover {
@@ -332,12 +334,12 @@ body {
 }
 
 .btn-small {
-    padding: 6px 12px;
+    padding: 4px 8px;
     margin: 0 2px;
     border: none;
     border-radius: 4px;
     cursor: pointer;
-    font-size: 12px;
+    font-size: 11px;
 }
 
 .btn-edit {
@@ -2456,6 +2458,43 @@ body {
 
 .detail-row .value {
     color: #6C757D;
+}
+
+/* Pagination Styles */
+.pagination {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 15px;
+    padding: 20px;
+    background: white;
+    border-radius: 0 0 12px 12px;
+}
+
+.pagination button {
+    padding: 8px 16px;
+    background: #0077B6;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: background 0.3s;
+}
+
+.pagination button:hover:not(:disabled) {
+    background: #023E8A;
+}
+
+.pagination button:disabled {
+    background: #E6F2F1;
+    color: #6C757D;
+    cursor: not-allowed;
+}
+
+.pagination span {
+    color: #2D2D2D;
+    font-weight: 500;
 }
 
 .assignments-card h3 {

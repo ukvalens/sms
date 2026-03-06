@@ -7,6 +7,17 @@ $message = '';
 $error = '';
 $teacherId = $_SESSION['user_id'];
 
+// Handle exam deletion
+if($_POST && isset($_POST['action']) && $_POST['action'] == 'delete') {
+    $db->query("DELETE FROM exams WHERE id = :id AND created_by = :created_by");
+    $db->bind(':id', $_POST['exam_id']);
+    $db->bind(':created_by', $teacherId);
+    if($db->execute()) {
+        header('Location: exams.php?deleted=1');
+        exit;
+    }
+}
+
 // Handle exam creation
 if($_POST && isset($_POST['action']) && $_POST['action'] == 'create') {
     // Validate that subject exists
@@ -31,6 +42,24 @@ if($_POST && isset($_POST['action']) && $_POST['action'] == 'create') {
             $error = 'Failed to schedule exam/assignment.';
         }
     }
+}
+
+if($_POST && isset($_POST['action']) && $_POST['action'] == 'reschedule') {
+    $db->query("UPDATE exams SET exam_date = :exam_date WHERE id = :exam_id AND created_by = :created_by");
+    $db->bind(':exam_date', $_POST['exam_date'] . ' ' . $_POST['exam_time']);
+    $db->bind(':exam_id', $_POST['exam_id']);
+    $db->bind(':created_by', $teacherId);
+    
+    if($db->execute()) {
+        header('Location: exams.php?rescheduled=1');
+        exit;
+    }
+}
+
+if(isset($_GET['deleted'])) {
+    $message = 'Exam deleted successfully!';
+} elseif(isset($_GET['rescheduled'])) {
+    $message = 'Exam rescheduled successfully!';
 }
 
 // Handle exam rescheduling
@@ -58,6 +87,30 @@ $db->query("SELECT DISTINCT c.id as class_id, c.name as class_name, s.id as sect
            ORDER BY c.name, s.name, sub.name");
 $db->bind(':teacher_id', $teacherId);
 $assignments = $db->resultset();
+
+// Get all classes and subjects from materials uploaded by this teacher
+$db->query("SELECT DISTINCT c.id as class_id, c.name as class_name, sub.id as subject_id, sub.name as subject_name
+           FROM study_materials sm
+           JOIN classes c ON sm.class_id = c.id
+           JOIN subjects sub ON sm.subject_id = sub.id
+           WHERE sm.uploaded_by = :teacher_id
+           ORDER BY c.name, sub.name");
+$db->bind(':teacher_id', $teacherId);
+$materialAssignments = $db->resultset();
+
+// Merge assignments
+foreach($materialAssignments as $ma) {
+    $exists = false;
+    foreach($assignments as $a) {
+        if($a['class_id'] == $ma['class_id'] && $a['subject_id'] == $ma['subject_id']) {
+            $exists = true;
+            break;
+        }
+    }
+    if(!$exists) {
+        $assignments[] = ['class_id' => $ma['class_id'], 'class_name' => $ma['class_name'], 'section_name' => '', 'subject_id' => $ma['subject_id'], 'subject_name' => $ma['subject_name']];
+    }
+}
 
 // Get teacher's exams
 $db->query("SELECT e.*, c.name as class_name, s.name as subject_name 
@@ -130,7 +183,8 @@ $content = '
                     <option value="">Select Class & Subject</option>';
 
 foreach($assignments as $assignment) {
-    $content .= '<option value="' . $assignment['class_id'] . ',' . $assignment['subject_id'] . '">' . $assignment['class_name'] . ' - ' . $assignment['section_name'] . ' - ' . $assignment['subject_name'] . '</option>';
+    $sectionName = $assignment['section_name'] ? ' - ' . $assignment['section_name'] : '';
+    $content .= '<option value="' . $assignment['class_id'] . ',' . $assignment['subject_id'] . '">' . $assignment['class_name'] . $sectionName . ' - ' . $assignment['subject_name'] . '</option>';
 }
 
 $content .= '
@@ -214,7 +268,7 @@ if(empty($exams)) {
                     <button class="btn-small btn-edit" onclick="createQuestions(' . $exam['id'] . ')">Create Questions</button>
                     <button class="btn-small btn-view" onclick="enterMarks(' . $exam['id'] . ')">Enter Marks</button>
                     <button class="btn-small btn-secondary" onclick="rescheduleExam(' . $exam['id'] . ')">Reschedule</button>
-                    <button class="btn-small btn-view" onclick="viewExam(' . $exam['id'] . ')">View</button>
+                    <button class="btn-small btn-delete" onclick="deleteExam(' . $exam['id'] . ')">Delete</button>
                 </td>
             </tr>';
     }
@@ -259,6 +313,16 @@ function createQuestions(examId) {
 
 function enterMarks(examId) {
     window.location.href = "marks.php?exam_id=" + examId;
+}
+
+function deleteExam(examId) {
+    if(confirm("Are you sure you want to delete this exam? This action cannot be undone.")) {
+        const form = document.createElement("form");
+        form.method = "POST";
+        form.innerHTML = `<input name="action" value="delete"><input name="exam_id" value="${examId}">`;
+        document.body.appendChild(form);
+        form.submit();
+    }
 }
 
 function viewExam(examId) {

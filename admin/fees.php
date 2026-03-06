@@ -15,9 +15,14 @@ if ($_POST) {
         $db->bind(4, $_POST['amount']);
         $db->bind(5, $_POST['due_date']);
         if ($db->execute()) {
-            $message = '<div class="alert alert-success">Fee term added successfully!</div>';
+            header('Location: fees.php?added=1');
+            exit;
         }
     }
+}
+
+if(isset($_GET['added'])) {
+    $message = '<div class="alert alert-success">Fee term added successfully!</div>';
 }
 
 // Get classes for dropdown
