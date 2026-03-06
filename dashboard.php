@@ -12,6 +12,27 @@ if(!$auth->isLoggedIn()) {
 $role = $auth->getRole();
 $db = new Database();
 
+// Get user photo
+$photoSrc = 'data:image/svg+xml;base64,' . base64_encode('<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40"><rect width="40" height="40" fill="#00BFA6"/><text x="20" y="28" font-family="Arial" font-size="20" font-weight="bold" text-anchor="middle" fill="white">' . strtoupper(substr($_SESSION['username'], 0, 1)) . '</text></svg>');
+switch($role) {
+    case 'admin':
+        $db->query("SELECT photo FROM users WHERE id = :id");
+        break;
+    case 'teacher':
+        $db->query("SELECT photo FROM teachers WHERE user_id = :id");
+        break;
+    case 'student':
+        $db->query("SELECT photo FROM students WHERE user_id = :id");
+        break;
+}
+if(isset($role) && $role !== 'parent') {
+    $db->bind(':id', $_SESSION['user_id']);
+    $user = $db->single();
+    if($user && $user['photo'] && file_exists($user['photo'])) {
+        $photoSrc = '/sms/' . $user['photo'];
+    }
+}
+
 // Get user stats based on role
 function getStats($db, $role) {
     $stats = [];
@@ -135,12 +156,13 @@ $stats = getStats($db, $role);
                 
                 <div class="user-profile">
                     <div class="user-avatar">
-                        <?php echo strtoupper(substr($_SESSION['username'], 0, 1)); ?>
+                        <img src="<?php echo $photoSrc; ?>" alt="Profile" style="width:40px;height:40px;border-radius:50%;object-fit:cover;">
                     </div>
                     <div class="user-info">
                         <div class="user-name"><?php echo $_SESSION['username']; ?></div>
                         <div class="user-role"><?php echo $role; ?></div>
                     </div>
+                    <a href="profile.php" style="margin-left: 15px; color: #00BFA6; text-decoration: none;">Profile</a>
                     <a href="logout.php" style="margin-left: 15px; color: #00BFA6; text-decoration: none;">Logout</a>
                 </div>
             </div>
@@ -254,9 +276,12 @@ $stats = getStats($db, $role);
             
             <!-- Footer -->
             <div class="footer">
-                <p>&copy; 2024 School Management System. All rights reserved.</p>
+                <p>&copy; <span id="year"></span> School Management System. All rights reserved.</p>
             </div>
         </div>
     </div>
+    <script>
+    document.getElementById('year').textContent = new Date().getFullYear();
+    </script>
 </body>
 </html>

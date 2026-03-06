@@ -13,6 +13,28 @@ $message = '';
 $error = '';
 $userId = $_SESSION['user_id'];
 $userRole = $_SESSION['role'];
+$currentUser = null;
+
+// Get user data based on role first
+switch($userRole) {
+    case 'admin':
+        $db->query("SELECT * FROM users WHERE id = :id");
+        $db->bind(':id', $userId);
+        $currentUser = $db->single();
+        break;
+        
+    case 'teacher':
+        $db->query("SELECT u.*, t.* FROM users u JOIN teachers t ON u.id = t.user_id WHERE u.id = :id");
+        $db->bind(':id', $userId);
+        $currentUser = $db->single();
+        break;
+        
+    case 'student':
+        $db->query("SELECT u.*, s.*, c.name as class_name, sec.name as section_name FROM users u JOIN students s ON u.id = s.user_id LEFT JOIN classes c ON s.class_id = c.id LEFT JOIN sections sec ON s.section_id = sec.id WHERE u.id = :id");
+        $db->bind(':id', $userId);
+        $currentUser = $db->single();
+        break;
+}
 
 // Handle form submission
 if($_POST) {
@@ -88,6 +110,20 @@ if($_POST) {
                     if($db->execute()) {
                         $_SESSION['username'] = $_POST['username'];
                         $message = 'Profile updated successfully!';
+                        // Refresh user data
+                        switch($userRole) {
+                            case 'admin':
+                                $db->query("SELECT * FROM users WHERE id = :id");
+                                break;
+                            case 'teacher':
+                                $db->query("SELECT u.*, t.* FROM users u JOIN teachers t ON u.id = t.user_id WHERE u.id = :id");
+                                break;
+                            case 'student':
+                                $db->query("SELECT u.*, s.*, c.name as class_name, sec.name as section_name FROM users u JOIN students s ON u.id = s.user_id LEFT JOIN classes c ON s.class_id = c.id LEFT JOIN sections sec ON s.section_id = sec.id WHERE u.id = :id");
+                                break;
+                        }
+                        $db->bind(':id', $userId);
+                        $currentUser = $db->single();
                     } else {
                         $error = 'Failed to update profile details.';
                     }
@@ -120,24 +156,26 @@ if($_POST) {
 }
 
 // Get user data based on role
-switch($userRole) {
-    case 'admin':
-        $db->query("SELECT * FROM users WHERE id = :id");
-        $db->bind(':id', $userId);
-        $currentUser = $db->single();
-        break;
-        
-    case 'teacher':
-        $db->query("SELECT u.*, t.* FROM users u JOIN teachers t ON u.id = t.user_id WHERE u.id = :id");
-        $db->bind(':id', $userId);
-        $currentUser = $db->single();
-        break;
-        
-    case 'student':
-        $db->query("SELECT u.*, s.*, c.name as class_name, sec.name as section_name FROM users u JOIN students s ON u.id = s.user_id LEFT JOIN classes c ON s.class_id = c.id LEFT JOIN sections sec ON s.section_id = sec.id WHERE u.id = :id");
-        $db->bind(':id', $userId);
-        $currentUser = $db->single();
-        break;
+if(!$currentUser) {
+    switch($userRole) {
+        case 'admin':
+            $db->query("SELECT * FROM users WHERE id = :id");
+            $db->bind(':id', $userId);
+            $currentUser = $db->single();
+            break;
+            
+        case 'teacher':
+            $db->query("SELECT u.*, t.* FROM users u JOIN teachers t ON u.id = t.user_id WHERE u.id = :id");
+            $db->bind(':id', $userId);
+            $currentUser = $db->single();
+            break;
+            
+        case 'student':
+            $db->query("SELECT u.*, s.*, c.name as class_name, sec.name as section_name FROM users u JOIN students s ON u.id = s.user_id LEFT JOIN classes c ON s.class_id = c.id LEFT JOIN sections sec ON s.section_id = sec.id WHERE u.id = :id");
+            $db->bind(':id', $userId);
+            $currentUser = $db->single();
+            break;
+    }
 }
 
 // Determine layout based on role
