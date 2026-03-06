@@ -33,6 +33,9 @@ if(isset($_GET['generate'])) {
         case 'teacher-load':
             generateTeacherLoadReport($db);
             break;
+        case 'subject-wise':
+            generateSubjectWiseReport($db);
+            break;
     }
     exit;
 }
@@ -134,6 +137,43 @@ function generateFeeCollectionReport($db) {
     
     foreach($data as $row) {
         fputcsv($output, [$row['fee_name'], $row['class_name'], $row['total_amount'], $row['collected_amount'], $row['outstanding']]);
+    }
+    fclose($output);
+}
+
+function generateSubjectWiseReport($db) {
+    header('Content-Type: text/csv');
+    header('Content-Disposition: attachment; filename="subject_wise_performance_' . date('Y-m-d') . '.csv"');
+    
+    $output = fopen('php://output', 'w');
+    fputcsv($output, ['Subject', 'Code', 'Total Exams', 'Total Students Appeared', 'Average Marks', 'Pass Rate %', 'Teachers Assigned']);
+    
+    $db->query("
+        SELECT s.name as subject_name, s.code,
+               COUNT(DISTINCT e.id) as total_exams,
+               COUNT(DISTINCT er.student_id) as total_students,
+               ROUND(AVG(er.marks_obtained), 2) as avg_marks,
+               ROUND((SUM(CASE WHEN er.status = 'pass' THEN 1 ELSE 0 END) / COUNT(er.id)) * 100, 2) as pass_rate,
+               COUNT(DISTINCT ts.teacher_id) as teachers_count
+        FROM subjects s
+        LEFT JOIN exams e ON s.id = e.subject_id
+        LEFT JOIN exam_results er ON e.id = er.exam_id
+        LEFT JOIN teacher_subjects ts ON s.id = ts.subject_id
+        GROUP BY s.id
+        ORDER BY s.name
+    ");
+    $subjects = $db->resultset();
+    
+    foreach($subjects as $subject) {
+        fputcsv($output, [
+            $subject['subject_name'],
+            $subject['code'],
+            $subject['total_exams'],
+            $subject['total_students'],
+            $subject['avg_marks'] ?? 'N/A',
+            $subject['pass_rate'] ?? 'N/A',
+            $subject['teachers_count']
+        ]);
     }
     fclose($output);
 }
@@ -295,7 +335,7 @@ $content = '
         <h3>Academic Reports</h3>
         <ul>
             <li><a href="#" onclick="generateReport(\'exam-results\')">Exam Results (Coming Soon)</a></li>
-            <li><a href="#" onclick="generateReport(\'subject-wise\')">Subject-wise Performance (Coming Soon)</a></li>
+            <li><a href="?generate=subject-wise">Subject-wise Performance (CSV)</a></li>
             <li><a href="?generate=teacher-load">Teacher Workload Report (CSV)</a></li>
         </ul>
     </div>
