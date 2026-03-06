@@ -51,6 +51,7 @@ foreach($materials as $material) {
                 <td>' . $material['uploaded_by'] . '</td>
                 <td>' . date('M d, Y', strtotime($material['uploaded_at'])) . '</td>
                 <td>
+                    <button class="btn-small btn-view" onclick="viewMaterial(\'' . $material['file_path'] . '\', \'' . $material['file_type'] . '\')">View</button>
                     <button class="btn-small btn-view" onclick="downloadMaterial(\'' . $material['file_path'] . '\', ' . $material['id'] . ')">Download</button>
                 </td>
             </tr>';
@@ -62,6 +63,10 @@ $content .= '
 </div>
 
 <script>
+function viewMaterial(path, type) {
+    window.open("/sms/" + path, "_blank");
+}
+
 function downloadMaterial(path, id) {
     // Update download count
     fetch("../api/download.php", {
