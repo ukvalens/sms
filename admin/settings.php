@@ -7,18 +7,49 @@ $message = '';
 $error = '';
 
 // Handle password reset
-if($_POST && isset($_POST['action']) && $_POST['action'] === 'reset_password') {
-    $userId = $_POST['user_id'];
-    $newPassword = $_POST['new_password'];
-    
-    $db->query("UPDATE users SET password = :password WHERE id = :id");
-    $db->bind(':password', password_hash($newPassword, PASSWORD_DEFAULT));
-    $db->bind(':id', $userId);
-    
-    if($db->execute()) {
-        $message = 'Password reset successfully!';
+if($_POST && isset($_POST['action'])) {
+    if($_POST['action'] === 'reset_password') {
+        $userId = $_POST['user_id'];
+        $newPassword = $_POST['new_password'];
+        
+        $db->query("UPDATE users SET password = :password WHERE id = :id");
+        $db->bind(':password', password_hash($newPassword, PASSWORD_DEFAULT));
+        $db->bind(':id', $userId);
+        
+        if($db->execute()) {
+            $message = 'Password reset successfully!';
+        } else {
+            $error = 'Failed to reset password.';
+        }
+    } elseif($_POST['action'] === 'backup') {
+        $backupDir = '../backups/';
+        if(!is_dir($backupDir)) mkdir($backupDir, 0777, true);
+        
+        $filename = 'backup_' . date('Y-m-d_H-i-s') . '.sql';
+        $filepath = $backupDir . $filename;
+        
+        $host = 'localhost';
+        $user = 'root';
+        $pass = '';
+        $dbname = 'school_management';
+        
+        $command = "mysqldump --host={$host} --user={$user} --password={$pass} {$dbname} > {$filepath}";
+        exec($command, $output, $result);
+        
+        if($result === 0) {
+            header('Location: settings.php?msg=Backup created successfully: ' . $filename);
+        } else {
+            header('Location: settings.php?msg=Backup failed. Please check database credentials.');
+        }
+        exit;
+    }
+}
+
+if(isset($_GET['msg'])) {
+    if(strpos($_GET['msg'], 'successfully') !== false) {
+        $message = $_GET['msg'];
     } else {
-        $error = 'Failed to reset password.';
+        $error = $_GET['msg'];
     }
 }
 
@@ -124,7 +155,10 @@ $content = '
         <div class="action-buttons">
             <button class="btn" onclick="showUserList()">Reset User Passwords</button>
             <button class="btn" onclick="exportData()">Export Data</button>
-            <button class="btn btn-danger" onclick="systemBackup()">System Backup</button>
+            <form method="POST" style="display:inline;" onsubmit="return confirm('Create database backup now?');">
+                <input type="hidden" name="action" value="backup">
+                <button type="submit" class="btn btn-danger">Create Backup</button>
+            </form>
         </div>
     </div>
 </div>
@@ -189,10 +223,6 @@ function closeModal() {
 
 function exportData() { 
     alert("Data export will be implemented"); 
-}
-
-function systemBackup() { 
-    alert("System backup will be implemented"); 
 }
 </script>';
 

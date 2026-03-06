@@ -27,6 +27,12 @@ if($_POST) {
                     exit;
                 }
                 
+                // Generate roll number
+                $db->query("SELECT MAX(CAST(SUBSTRING(roll_number, 2) AS UNSIGNED)) as max_num FROM students WHERE roll_number LIKE 'S%'");
+                $result = $db->single();
+                $nextNum = ($result['max_num'] ?? 0) + 1;
+                $rollNumber = 'S' . str_pad($nextNum, 4, '0', STR_PAD_LEFT);
+                
                 $db->query("INSERT INTO users (username, email, password, role) VALUES (:username, :email, :password, 'student')");
                 $db->bind(':username', $_POST['username']);
                 $db->bind(':email', $_POST['email']);
@@ -37,7 +43,7 @@ if($_POST) {
                     
                     $db->query("INSERT INTO students (user_id, roll_number, class_id, section_id, admission_date, date_of_birth, gender, address, phone) VALUES (:user_id, :roll_number, :class_id, :section_id, :admission_date, :date_of_birth, :gender, :address, :phone)");
                     $db->bind(':user_id', $userId);
-                    $db->bind(':roll_number', $_POST['roll_number']);
+                    $db->bind(':roll_number', $rollNumber);
                     $db->bind(':class_id', $_POST['class_id']);
                     $db->bind(':section_id', $_POST['section_id']);
                     $db->bind(':admission_date', $_POST['admission_date']);
@@ -156,7 +162,7 @@ echo renderAdminLayout('Manage Students', '
             ' . (!$editStudent ? '<div class="form-group"><label>Password:</label><input type="password" name="password" required class="form-control"></div>' : '') . '
             <div class="form-group">
                 <label>Roll Number:</label>
-                <input type="text" name="roll_number" required class="form-control" value="' . ($editStudent['roll_number'] ?? '') . '">
+                <input type="text" name="roll_number" class="form-control" value="' . ($editStudent['roll_number'] ?? 'Auto-generated') . '"' . ($editStudent ? '' : ' readonly style="background:#f0f0f0;"') . '>
             </div>
             <div class="form-group">
                 <label>Class:</label>
