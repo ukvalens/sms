@@ -42,6 +42,9 @@ if(isset($_GET['generate'])) {
         case 'outstanding':
             generateOutstandingFeesReport($db);
             break;
+        case 'monthly-income':
+            generateMonthlyIncomeReport($db);
+            break;
     }
     exit;
 }
@@ -143,6 +146,42 @@ function generateFeeCollectionReport($db) {
     
     foreach($data as $row) {
         fputcsv($output, [$row['fee_name'], $row['class_name'], $row['total_amount'], $row['collected_amount'], $row['outstanding']]);
+    }
+    fclose($output);
+}
+
+function generateMonthlyIncomeReport($db) {
+    header('Content-Type: text/csv');
+    header('Content-Disposition: attachment; filename="monthly_income_' . date('Y-m-d') . '.csv"');
+    
+    $output = fopen('php://output', 'w');
+    fputcsv($output, ['Month', 'Year', 'Total Payments', 'Total Amount', 'Payment Method - Cash', 'Payment Method - Bank Transfer', 'Payment Method - Cheque']);
+    
+    $db->query("
+        SELECT DATE_FORMAT(payment_date, '%Y-%m') as month_year,
+               DATE_FORMAT(payment_date, '%M') as month_name,
+               DATE_FORMAT(payment_date, '%Y') as year,
+               COUNT(*) as total_payments,
+               SUM(amount_paid) as total_amount,
+               SUM(CASE WHEN payment_method = 'cash' THEN amount_paid ELSE 0 END) as cash_amount,
+               SUM(CASE WHEN payment_method = 'bank_transfer' THEN amount_paid ELSE 0 END) as bank_amount,
+               SUM(CASE WHEN payment_method = 'cheque' THEN amount_paid ELSE 0 END) as cheque_amount
+        FROM fee_payments
+        GROUP BY month_year
+        ORDER BY month_year DESC
+    ");
+    $income = $db->resultset();
+    
+    foreach($income as $row) {
+        fputcsv($output, [
+            $row['month_name'],
+            $row['year'],
+            $row['total_payments'],
+            $row['total_amount'],
+            $row['cash_amount'],
+            $row['bank_amount'],
+            $row['cheque_amount']
+        ]);
     }
     fclose($output);
 }
@@ -426,7 +465,7 @@ $content = '
         <ul>
             <li><a href="?generate=fee-collection">Fee Collection Report (CSV)</a></li>
             <li><a href="?generate=outstanding">Outstanding Fees Report (CSV)</a></li>
-            <li><a href="#" onclick="generateReport(\'monthly-income\')">Monthly Income (Coming Soon)</a></li>
+            <li><a href="?generate=monthly-income">Monthly Income Report (CSV)</a></li>
         </ul>
     </div>
     
