@@ -26,20 +26,32 @@ if($_POST && isset($_POST['action'])) {
         if(!is_dir($backupDir)) mkdir($backupDir, 0777, true);
         
         $filename = 'backup_' . date('Y-m-d_H-i-s') . '.sql';
-        $filepath = $backupDir . $filename;
+        $filepath = realpath($backupDir) . '\\' . $filename;
         
-        $host = 'localhost';
-        $user = 'root';
-        $pass = '';
-        $dbname = 'school_management';
-        
-        $command = "mysqldump --host={$host} --user={$user} --password={$pass} {$dbname} > {$filepath}";
-        exec($command, $output, $result);
-        
-        if($result === 0) {
+        // Use PHP to create backup instead of mysqldump
+        try {
+            $pdo = new PDO('mysql:host=localhost;dbname=school_management', 'root', '');
+            $tables = $pdo->query('SHOW TABLES')->fetchAll(PDO::FETCH_COLUMN);
+            
+            $sql = "-- Database Backup\n-- Generated: " . date('Y-m-d H:i:s') . "\n\n";
+            
+            foreach($tables as $table) {
+                $sql .= "DROP TABLE IF EXISTS `$table`;\n";
+                $create = $pdo->query("SHOW CREATE TABLE `$table`")->fetch();
+                $sql .= $create[1] . ";\n\n";
+                
+                $rows = $pdo->query("SELECT * FROM `$table`")->fetchAll(PDO::FETCH_ASSOC);
+                foreach($rows as $row) {
+                    $values = array_map(function($v) use ($pdo) { return $pdo->quote($v); }, array_values($row));
+                    $sql .= "INSERT INTO `$table` VALUES (" . implode(',', $values) . ");\n";
+                }
+                $sql .= "\n";
+            }
+            
+            file_put_contents($filepath, $sql);
             header('Location: settings.php?msg=Backup created successfully: ' . $filename);
-        } else {
-            header('Location: settings.php?msg=Backup failed. Please check database credentials.');
+        } catch(Exception $e) {
+            header('Location: settings.php?msg=Backup failed: ' . $e->getMessage());
         }
         exit;
     }
@@ -154,8 +166,8 @@ $content = '
         <h3>User Management</h3>
         <div class="action-buttons">
             <button class="btn" onclick="showUserList()">Reset User Passwords</button>
-            <button class="btn" onclick="exportData()">Export Data</button>
-            <form method="POST" style="display:inline;" onsubmit="return confirm('Create database backup now?');">
+            <a href="../admin/reports.php" class="btn">Export Data (Reports)</a>
+            <form method="POST" style="display:inline;" onsubmit="return confirm(\'Create database backup now?\');">
                 <input type="hidden" name="action" value="backup">
                 <button type="submit" class="btn btn-danger">Create Backup</button>
             </form>
@@ -219,10 +231,6 @@ function resetUserPassword(userId, username, email) {
 
 function closeModal() {
     document.getElementById("resetModal").style.display = "none";
-}
-
-function exportData() { 
-    alert("Data export will be implemented"); 
 }
 </script>';
 
