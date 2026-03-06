@@ -30,6 +30,9 @@ if(isset($_GET['generate'])) {
         case 'user-activity':
             generateUserActivityReport($db);
             break;
+        case 'teacher-load':
+            generateTeacherLoadReport($db);
+            break;
     }
     exit;
 }
@@ -131,6 +134,43 @@ function generateFeeCollectionReport($db) {
     
     foreach($data as $row) {
         fputcsv($output, [$row['fee_name'], $row['class_name'], $row['total_amount'], $row['collected_amount'], $row['outstanding']]);
+    }
+    fclose($output);
+}
+
+function generateTeacherLoadReport($db) {
+    header('Content-Type: text/csv');
+    header('Content-Disposition: attachment; filename="teacher_workload_' . date('Y-m-d') . '.csv"');
+    
+    $output = fopen('php://output', 'w');
+    fputcsv($output, ['Teacher Name', 'Employee ID', 'Total Classes', 'Total Subjects', 'Total Students', 'Materials Uploaded', 'Exams Created']);
+    
+    $db->query("
+        SELECT u.username, t.employee_id,
+               COUNT(DISTINCT ts.class_id) as total_classes,
+               COUNT(DISTINCT ts.subject_id) as total_subjects,
+               COUNT(DISTINCT s.id) as total_students,
+               (SELECT COUNT(*) FROM study_materials WHERE uploaded_by = u.id) as materials_count,
+               (SELECT COUNT(*) FROM exams WHERE created_by = u.id) as exams_count
+        FROM teachers t
+        JOIN users u ON t.user_id = u.id
+        LEFT JOIN teacher_subjects ts ON t.id = ts.teacher_id
+        LEFT JOIN students s ON ts.class_id = s.class_id AND ts.section_id = s.section_id
+        GROUP BY t.id
+        ORDER BY u.username
+    ");
+    $teachers = $db->resultset();
+    
+    foreach($teachers as $teacher) {
+        fputcsv($output, [
+            $teacher['username'],
+            $teacher['employee_id'],
+            $teacher['total_classes'],
+            $teacher['total_subjects'],
+            $teacher['total_students'],
+            $teacher['materials_count'],
+            $teacher['exams_count']
+        ]);
     }
     fclose($output);
 }
@@ -256,7 +296,7 @@ $content = '
         <ul>
             <li><a href="#" onclick="generateReport(\'exam-results\')">Exam Results (Coming Soon)</a></li>
             <li><a href="#" onclick="generateReport(\'subject-wise\')">Subject-wise Performance (Coming Soon)</a></li>
-            <li><a href="#" onclick="generateReport(\'teacher-load\')">Teacher Workload (Coming Soon)</a></li>
+            <li><a href="?generate=teacher-load">Teacher Workload Report (CSV)</a></li>
         </ul>
     </div>
     
