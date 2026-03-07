@@ -8,7 +8,35 @@ $error = '';
 
 // Handle password reset
 if($_POST && isset($_POST['action'])) {
-    if($_POST['action'] === 'reset_password') {
+    if($_POST['action'] === 'school_info') {
+        // Save to a settings file or database
+        $settings = [
+            'school_name' => $_POST['school_name'],
+            'address' => $_POST['address'],
+            'phone' => $_POST['phone']
+        ];
+        file_put_contents('../config/school_settings.json', json_encode($settings));
+        header('Location: settings.php?msg=School information updated successfully!');
+        exit;
+    } elseif($_POST['action'] === 'academic_settings') {
+        $settings = [
+            'current_session' => $_POST['current_session'],
+            'attendance_time' => $_POST['attendance_time'],
+            'pass_percentage' => $_POST['pass_percentage']
+        ];
+        file_put_contents('../config/academic_settings.json', json_encode($settings));
+        header('Location: settings.php?msg=Academic settings updated successfully!');
+        exit;
+    } elseif($_POST['action'] === 'system_preferences') {
+        $settings = [
+            'email_notifications' => isset($_POST['email_notifications']) ? 1 : 0,
+            'sms_notifications' => isset($_POST['sms_notifications']) ? 1 : 0,
+            'auto_backup' => isset($_POST['auto_backup']) ? 1 : 0
+        ];
+        file_put_contents('../config/system_preferences.json', json_encode($settings));
+        header('Location: settings.php?msg=System preferences updated successfully!');
+        exit;
+    } elseif($_POST['action'] === 'reset_password') {
         $userId = $_POST['user_id'];
         $newPassword = $_POST['new_password'];
         
@@ -65,6 +93,11 @@ if(isset($_GET['msg'])) {
     }
 }
 
+// Load settings
+$schoolInfo = file_exists('../config/school_settings.json') ? json_decode(file_get_contents('../config/school_settings.json'), true) : ['school_name' => 'ABC School', 'address' => '123 School Street, City', 'phone' => '+1234567890'];
+$academicSettings = file_exists('../config/academic_settings.json') ? json_decode(file_get_contents('../config/academic_settings.json'), true) : ['current_session' => '2024-2025', 'attendance_time' => '09:00', 'pass_percentage' => '40'];
+$systemPreferences = file_exists('../config/system_preferences.json') ? json_decode(file_get_contents('../config/system_preferences.json'), true) : ['email_notifications' => 1, 'sms_notifications' => 1, 'auto_backup' => 0];
+
 // Get all users for password reset
 $db->query("SELECT id, username, email, role FROM users ORDER BY role, username");
 $users = $db->resultset();
@@ -101,18 +134,19 @@ $content = '
 <div class="settings-grid">
     <div class="settings-card">
         <h3>School Information</h3>
-        <form>
+        <form method="POST">
+            <input type="hidden" name="action" value="school_info">
             <div class="form-group">
                 <label>School Name:</label>
-                <input type="text" value="ABC School" class="form-control">
+                <input type="text" name="school_name" value="' . $schoolInfo['school_name'] . '" class="form-control" required>
             </div>
             <div class="form-group">
                 <label>Address:</label>
-                <textarea class="form-control">123 School Street, City</textarea>
+                <textarea name="address" class="form-control" required>' . $schoolInfo['address'] . '</textarea>
             </div>
             <div class="form-group">
                 <label>Phone:</label>
-                <input type="text" value="+1234567890" class="form-control">
+                <input type="text" name="phone" value="' . $schoolInfo['phone'] . '" class="form-control" required>
             </div>
             <button type="submit" class="btn">Update</button>
         </form>
@@ -120,21 +154,22 @@ $content = '
     
     <div class="settings-card">
         <h3>Academic Settings</h3>
-        <form>
+        <form method="POST">
+            <input type="hidden" name="action" value="academic_settings">
             <div class="form-group">
                 <label>Current Session:</label>
-                <select class="form-control">
-                    <option>2024-2025</option>
-                    <option>2025-2026</option>
+                <select name="current_session" class="form-control">
+                    <option' . ($academicSettings['current_session'] == '2024-2025' ? ' selected' : '') . '>2024-2025</option>
+                    <option' . ($academicSettings['current_session'] == '2025-2026' ? ' selected' : '') . '>2025-2026</option>
                 </select>
             </div>
             <div class="form-group">
                 <label>Attendance Marking Time:</label>
-                <input type="time" value="09:00" class="form-control">
+                <input type="time" name="attendance_time" value="' . $academicSettings['attendance_time'] . '" class="form-control">
             </div>
             <div class="form-group">
                 <label>Pass Percentage:</label>
-                <input type="number" value="40" class="form-control">
+                <input type="number" name="pass_percentage" value="' . $academicSettings['pass_percentage'] . '" class="form-control" min="0" max="100">
             </div>
             <button type="submit" class="btn">Update</button>
         </form>
@@ -142,20 +177,21 @@ $content = '
     
     <div class="settings-card">
         <h3>System Preferences</h3>
-        <form>
+        <form method="POST">
+            <input type="hidden" name="action" value="system_preferences">
             <div class="form-group">
                 <label>
-                    <input type="checkbox" checked> Email Notifications
+                    <input type="checkbox" name="email_notifications"' . ($systemPreferences['email_notifications'] ? ' checked' : '') . '> Email Notifications
                 </label>
             </div>
             <div class="form-group">
                 <label>
-                    <input type="checkbox" checked> SMS Notifications
+                    <input type="checkbox" name="sms_notifications"' . ($systemPreferences['sms_notifications'] ? ' checked' : '') . '> SMS Notifications
                 </label>
             </div>
             <div class="form-group">
                 <label>
-                    <input type="checkbox"> Auto Backup
+                    <input type="checkbox" name="auto_backup"' . ($systemPreferences['auto_backup'] ? ' checked' : '') . '> Auto Backup
                 </label>
             </div>
             <button type="submit" class="btn">Update</button>

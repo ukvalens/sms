@@ -40,6 +40,20 @@ if($_POST) {
                 break;
                 
             case 'delete':
+                // Check if subject is being used
+                $db->query("SELECT COUNT(*) as count FROM study_materials WHERE subject_id = :id");
+                $db->bind(':id', $_POST['subject_id']);
+                $materialCount = $db->single()['count'];
+                
+                $db->query("SELECT COUNT(*) as count FROM exams WHERE subject_id = :id");
+                $db->bind(':id', $_POST['subject_id']);
+                $examCount = $db->single()['count'];
+                
+                if($materialCount > 0 || $examCount > 0) {
+                    header('Location: subjects.php?msg=Cannot delete subject. It has ' . ($materialCount + $examCount) . ' related records.');
+                    exit;
+                }
+                
                 $db->query("DELETE FROM subjects WHERE id = :id");
                 $db->bind(':id', $_POST['subject_id']);
                 if($db->execute()) {
