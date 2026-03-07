@@ -10,6 +10,97 @@ $error = '';
 if($_POST) {
     if(isset($_POST['action'])) {
         switch($_POST['action']) {
+            case 'bulk_upload':
+                if(isset($_FILES['csv_file']) && $_FILES['csv_file']['error'] === 0) {
+                    $file = fopen($_FILES['csv_file']['tmp_name'], 'r');
+                    fgetcsv($file); // Skip header
+                    
+                    $success = 0;
+                    $errors = [];
+                    
+                    while(($row = fgetcsv($file)) !== false) {
+                        if(empty($row[0])) continue;
+                        
+                        // Check if username exists
+                        $db->query("SELECT id FROM users WHERE username = :username");
+                        $db->bind(':username', $row[0]);
+                        if($db->single()) {
+                            $errors[] = "Row skipped: Username '{$row[0]}' already exists";
+                            continue;
+                        }
+                        
+                        // Check if email exists
+                        $db->query("SELECT id FROM users WHERE email = :email");
+                        $db->bind(':email', $row[1]);
+                        if($db->single()) {
+                            $errors[] = "Row skipped: Email '{$row[1]}' already exists";
+                            continue;
+                        }
+                        
+                        // Lookup class by ID or name
+                        $db->query("SELECT id FROM classes WHERE id = :id OR name = :name");
+                        $db->bind(':id', $row[3]);
+                        $db->bind(':name', $row[3]);
+                        $class = $db->single();
+                        if(!$class) {
+                            $errors[] = "Row skipped: Class '{$row[3]}' not found";
+                            continue;
+                        }
+                        
+                        // Lookup section by ID or name
+                        $db->query("SELECT id FROM sections WHERE id = :id OR name = :name");
+                        $db->bind(':id', $row[4]);
+                        $db->bind(':name', $row[4]);
+                        $section = $db->single();
+                        if(!$section) {
+                            $errors[] = "Row skipped: Section '{$row[4]}' not found";
+                            continue;
+                        }
+                        
+                        // Generate roll number
+                        $db->query("SELECT MAX(CAST(SUBSTRING(roll_number, 2) AS UNSIGNED)) as max_num FROM students WHERE roll_number LIKE 'S%'");
+                        $result = $db->single();
+                        $nextNum = ($result['max_num'] ?? 0) + 1;
+                        $rollNumber = 'S' . str_pad($nextNum, 4, '0', STR_PAD_LEFT);
+                        
+                        // Create user
+                        $db->query("INSERT INTO users (username, email, password, role) VALUES (:username, :email, :password, 'student')");
+                        $db->bind(':username', $row[0]);
+                        $db->bind(':email', $row[1]);
+                        $db->bind(':password', password_hash($row[2], PASSWORD_DEFAULT));
+                        
+                        if($db->execute()) {
+                            $userId = $db->lastInsertId();
+                            
+                            $db->query("INSERT INTO students (user_id, roll_number, class_id, section_id, admission_date, date_of_birth, gender, address, phone) VALUES (:user_id, :roll_number, :class_id, :section_id, :admission_date, :date_of_birth, :gender, :address, :phone)");
+                            $db->bind(':user_id', $userId);
+                            $db->bind(':roll_number', $rollNumber);
+                            $db->bind(':class_id', $class['id']);
+                            $db->bind(':section_id', $section['id']);
+                            $db->bind(':admission_date', $row[5]);
+                            $db->bind(':date_of_birth', $row[6] ?? null);
+                            $db->bind(':gender', $row[7] ?? 'male');
+                            $db->bind(':address', $row[8] ?? '');
+                            $db->bind(':phone', $row[9] ?? '');
+                            
+                            if($db->execute()) {
+                                $success++;
+                            }
+                        }
+                    }
+                    fclose($file);
+                    
+                    $msg = $success . ' students uploaded successfully!';
+                    if(!empty($errors)) {
+                        $msg .= ' Errors: ' . implode(', ', $errors);
+                    }
+                    header('Location: students.php?msg=' . urlencode($msg));
+                } else {
+                    header('Location: students.php?msg=Please select a CSV file.');
+                }
+                exit;
+                break;
+                
             case 'add':
                 // Check if username already exists
                 $db->query("SELECT id FROM users WHERE username = :username");
@@ -138,7 +229,10 @@ $sections = $db->resultset();
 echo renderAdminLayout('Manage Students', '
 <div class="page-header">
     <h2>Student Management</h2>
-    <button class="btn" onclick="showAddForm()">Add New Student</button>
+    <div>
+        <button class="btn" onclick="showAddForm()">Add New Student</button>
+        <button class="btn" onclick="showBulkUpload()">Bulk Upload (CSV)</button>
+    </div>
 </div>
 
 ' . ($message ? '<div class="alert alert-success">' . $message . '</div>' : '') . '
@@ -210,6 +304,36 @@ echo renderAdminLayout('Manage Students', '
         </form>
     </div>
 </div>
+
+' . ($editStudent ? '<script>document.addEventListener("DOMContentLoaded", function() { document.getElementById("addModal").style.display = "block"; });</script>' : '') . '
+
+<!-- Bulk Upload Modal -->
+<div id="bulkModal" class="modal" style="display:none;">
+    <div class="modal-content">
+        <span class="close" onclick="closeBulkModal()">&times;</span>
+        <h3>Bulk Upload Students (CSV)</h3>
+        <p>Upload a CSV file with the following columns:</p>
+        <p style="font-size:12px;"><strong>Name, Email, Password, Class ID/Name, Section ID/Name, Admission Date, Date of Birth, Gender, Address, Phone</strong></p>
+        <form method="POST" enctype="multipart/form-data">
+            <input type="hidden" name="action" value="bulk_upload">
+            <div class="form-group">
+                <label>CSV File:</label>
+                <input type="file" name="csv_file" accept=".csv" required class="form-control">
+            </div>
+            <button type="submit" class="btn">Upload Students</button>
+        </form>
+    </div>
+</div>
+
+<script>
+function showBulkUpload() {
+    document.getElementById("bulkModal").style.display = "block";
+}
+
+function closeBulkModal() {
+    document.getElementById("bulkModal").style.display = "none";
+}
+</script>
 
 ' . ($editStudent ? '<script>document.addEventListener("DOMContentLoaded", function() { document.getElementById("addModal").style.display = "block"; });</script>' : '') . '
 
