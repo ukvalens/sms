@@ -111,7 +111,7 @@ if(empty($feeTerms)) {
                 <td>' . htmlspecialchars($fee['name']) . '</td>
                 <td>' . ucfirst($fee['type']) . '</td>
                 <td>' . htmlspecialchars($fee['class_name']) . '</td>
-                <td>₹' . number_format($fee['amount'], 2) . '</td>
+                <td>FRW ' . number_format($fee['amount'], 0) . '</td>
                 <td>' . date('M d, Y', strtotime($fee['due_date'])) . '</td>
                 <td>
                     <button class="btn-small btn-view" onclick="viewPayments(' . $fee['id'] . ')">View Payments</button>

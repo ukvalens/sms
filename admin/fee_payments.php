@@ -17,9 +17,10 @@ if (!$feeTerm) {
 
 // Get payments for this fee term
 $db->query("
-    SELECT fp.*, s.first_name, s.last_name, s.roll_number 
+    SELECT fp.*, u.username, s.roll_number 
     FROM fee_payments fp 
     JOIN students s ON fp.student_id = s.id 
+    JOIN users u ON s.user_id = u.id
     WHERE fp.fee_term_id = ? 
     ORDER BY fp.payment_date DESC
 ");
@@ -28,7 +29,8 @@ $payments = $db->resultset();
 
 // Get students who haven't paid
 $db->query("
-    SELECT s.* FROM students s 
+    SELECT s.*, u.username FROM students s 
+    JOIN users u ON s.user_id = u.id
     WHERE s.class_id = ? 
     AND s.id NOT IN (SELECT student_id FROM fee_payments WHERE fee_term_id = ?)
 ");
@@ -41,7 +43,7 @@ $content = '
     <h2>Fee Payments - ' . htmlspecialchars($feeTerm['name']) . '</h2>
     <div>
         <span class="stat-label">Class: ' . htmlspecialchars($feeTerm['class_name']) . '</span>
-        <span class="stat-label">Amount: ₹' . number_format($feeTerm['amount'], 2) . '</span>
+        <span class="stat-label">Amount: FRW ' . number_format($feeTerm['amount'], 0) . '</span>
     </div>
 </div>
 
@@ -55,7 +57,7 @@ $content = '
         <div class="stat-label">Pending Students</div>
     </div>
     <div class="stat-card">
-        <div class="stat-number">₹' . number_format(array_sum(array_column($payments, 'amount')), 2) . '</div>
+        <div class="stat-number">FRW ' . number_format(array_sum(array_column($payments, 'amount')), 0) . '</div>
         <div class="stat-label">Total Collected</div>
     </div>
 </div>';
@@ -79,9 +81,9 @@ if (!empty($payments)) {
     foreach($payments as $payment) {
         $content .= '
                 <tr>
-                    <td>' . htmlspecialchars($payment['first_name'] . ' ' . $payment['last_name']) . '</td>
+                    <td>' . htmlspecialchars($payment['username']) . '</td>
                     <td>' . htmlspecialchars($payment['roll_number']) . '</td>
-                    <td>₹' . number_format($payment['amount'], 2) . '</td>
+                    <td>FRW ' . number_format($payment['amount'], 0) . '</td>
                     <td>' . date('M d, Y', strtotime($payment['payment_date'])) . '</td>
                     <td>' . ucfirst($payment['payment_method']) . '</td>
                 </tr>';
@@ -112,9 +114,9 @@ if (!empty($unpaidStudents)) {
         $daysOverdue = max(0, (time() - strtotime($feeTerm['due_date'])) / (60*60*24));
         $content .= '
                 <tr>
-                    <td>' . htmlspecialchars($student['first_name'] . ' ' . $student['last_name']) . '</td>
+                    <td>' . htmlspecialchars($student['username']) . '</td>
                     <td>' . htmlspecialchars($student['roll_number']) . '</td>
-                    <td>₹' . number_format($feeTerm['amount'], 2) . '</td>
+                    <td>FRW ' . number_format($feeTerm['amount'], 0) . '</td>
                     <td>' . ($daysOverdue > 0 ? floor($daysOverdue) . ' days' : 'Not due') . '</td>
                 </tr>';
     }
