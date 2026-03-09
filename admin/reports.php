@@ -510,7 +510,7 @@ $content .= '
         <div class="stat-label">Total Classes</div>
     </div>
     <div class="stat-card">
-        <div class="stat-number">₹' . number_format($totalFees, 0) . '</div>
+        <div class="stat-number">RWF' . number_format($totalFees, 0) . '</div>
         <div class="stat-label">Total Fee Structure</div>
     </div>
 </div>
